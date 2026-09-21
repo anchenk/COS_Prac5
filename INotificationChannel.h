@@ -5,7 +5,7 @@
 
 enum class NotificationPriority
 {
-  NORMAL,
+  no,
   HIGH,
   CRITICAL
 };
