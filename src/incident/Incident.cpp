@@ -16,10 +16,25 @@ Incident::~Incident() {
     // (loggers, dashboards) that outlive individual incidents.
 }
 
-std::string Incident::getId() const { return id_; }
-std::string Incident::getType() const { return type_; }
-std::string Incident::getLocation() const { return location_; }
-int Incident::getSeverity() const { return severity_; }
+bool Incident::advanceState() {
+    if (!state_) {
+        return false; // no initial state assigned yet
+    }
+    return state_->advance(*this); // delegate the legality check to the current state
+}
+
+void Incident::setState(IncidentState* newState) {
+    delete state_;      // free the previous state object
+    state_ = newState;  // take ownership of the new one
+    notify("State changed to " + currentStateName());
+}
+
+std::string Incident::currentStateName() const {
+    if (!state_) {
+        return "Uninitialized";
+    }
+    return state_->name();
+}
 
 void Incident::attach(IIncidentObserver* observer) {
     observers_.push_back(observer);
@@ -38,3 +53,8 @@ void Incident::notify(const std::string& reason) {
         (*it)->onIncidentChanged(*this, reason);
     }
 }
+
+std::string Incident::getId() const { return id_; }
+std::string Incident::getType() const { return type_; }
+std::string Incident::getLocation() const { return location_; }
+int Incident::getSeverity() const { return severity_; }
