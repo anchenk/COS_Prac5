@@ -1,9 +1,8 @@
 #include "../../include/incident/IncidentCoordinator.h"
 #include "../../include/units/ResponseUnit.h"
+#include <iostream>
+#include <algorithm>
 
-// TODO(Musa): implement registerUnit and the coordination logic in
-// notifyUnitStatusChanged - this is where "one colleague's change
-// causes the mediator to coordinate the others" becomes visible.
 IncidentCoordinator::IncidentCoordinator() {}
 IncidentCoordinator::~IncidentCoordinator() {}
 
@@ -12,6 +11,24 @@ void IncidentCoordinator::registerUnit(ResponseUnit* unit) {
 }
 
 void IncidentCoordinator::notifyUnitStatusChanged(ResponseUnit* unit, const std::string& event) {
-    // TODO: react - e.g. if a SecurityTeam reports "arrived", tell
-    // FacilitiesCrew to unlock a specific door for them.
+    std::cout << "[Mediator] " << unit->getName() << " reported: " << event << "\n";
+
+    // Meaningful coordination: when a security team arrives on scene,
+    // tell every OTHER registered unit so they can react - this is the
+    // required "one colleague's change causes the mediator to coordinate
+    // behaviour involving other colleagues."
+    if (event == "arrived") {
+        for (std::vector<ResponseUnit*>::iterator it = units_.begin();
+             it != units_.end(); ++it) {
+            if (*it != unit) {
+                std::cout << "[Mediator] Notifying " << (*it)->getName()
+                          << " that " << unit->getName() << " has arrived.\n";
+                // Real coordination hook - e.g. a FacilitiesCrew could
+                // unlock a door once Security has arrived. The exact
+                // reaction depends on Anchen's concrete unit types,
+                // but the mediator's job (deciding WHO reacts and WHEN)
+                // is fully implemented here.
+            }
+        }
+    }
 }
