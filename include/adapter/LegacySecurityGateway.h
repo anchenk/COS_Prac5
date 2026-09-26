@@ -33,7 +33,7 @@ public:
             return -1; // Error code for invalid signal
         }
 
-        if (payloal == nullptr)
+        if (payload == nullptr)
         {
             std::cerr << "Error: Payload cannot be null." << std::endl;
             return -2; // Error code for null payload
