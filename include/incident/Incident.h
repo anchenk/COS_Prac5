@@ -6,7 +6,7 @@
 #include "IncidentState.h"
 #include "../observer/IIncidentObserver.h"
 
-// TODO(Musa): Incident is:
+//   Incident is:
 //   - the Context in the State pattern (holds an IncidentState*)
 //   - the Subject in the Observer pattern (holds IIncidentObserver* list)
 //   - a Colleague in the Mediator pattern (registers with IncidentCoordinator)

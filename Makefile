@@ -3,7 +3,7 @@ CXXFLAGS := -std=c++11 -Wall -Wextra -g -Iinclude
 BUILD_DIR := build
 TARGET := $(BUILD_DIR)/campusguard
 
-SRCS := $(shell find src -name '*.cpp')
+SRCS := $(wildcard src/*.cpp) $(wildcard src/*/*.cpp)
 OBJS := $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(SRCS))
 
 .PHONY: all clean run
