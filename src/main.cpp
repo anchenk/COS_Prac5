@@ -1,15 +1,28 @@
 #include <iostream>
-#include <vector>
+#include <string>
 
-#include "../include/observer/Incident.h"
-#include "../include/observer/IncidentLogger.h"
-#include "../include/observer/IncidentLogger.h"
-#include "../include/observer/IncidentDashboard.h"
+// ============================================================
+// INCIDENT / STATE / OBSERVER
+// ============================================================
+
+#include "../include/incident/Incident.h"
+#include "../include/incident/ReportedState.h"
+#include "../include/incident/IncidentCoordinator.h"
+
+#include "../include/observer/IIncidentObserver.h"
+
+// ============================================================
+// RESPONSE UNITS / MEDIATOR
+// ============================================================
 
 #include "../include/units/ResponseUnit.h"
 #include "../include/units/SecurityTeam.h"
 #include "../include/units/MedicalResponder.h"
 #include "../include/units/FacilitiesCrew.h"
+
+// ============================================================
+// COMMAND
+// ============================================================
 
 #include "../include/commands/OperatorConsole.h"
 #include "../include/commands/DispatchUnitCommand.h"
@@ -17,148 +30,558 @@
 #include "../include/commands/IssueAlertCommand.h"
 #include "../include/commands/CancelActionCommand.h"
 
-#include "../include/incident/IncidentCoordinator.h"
+// ============================================================
+// FACADE
+// ============================================================
 
 #include "../include/facade/AccessControlSystem.h"
 #include "../include/facade/AlertService.h"
 #include "../include/facade/EmergencyOperationsFacade.h"
-#include "../include/adapter/LegacySecurityGateway.h"
 
-// TODO(shared): This is where Scenario 1 (Ancheen) and Scenario 2
-// (Katlego) get wired together into one coherent run. Musa's
-// IncidentCoordinator, Incident and State classes tie both scenarios
-// together. Replace this stub once individual pieces compile.
+// ============================================================
+// ADAPTER
+// ============================================================
+
+#include "../include/adapter/LegacyGatewayAdapter.h"
+
+// ============================================================
+// TEST OBSERVER
+// ============================================================
+//
+// This is a simple Observer used only to make the Observer behaviour
+// clearly visible while testing.
+//
+// It implements IIncidentObserver and reacts whenever Incident calls
+// notify().
+//
+
+class TestIncidentObserver : public IIncidentObserver
+{
+public:
+    explicit TestIncidentObserver(const std::string &name)
+        : name_(name)
+    {
+    }
+
+    void onIncidentChanged(
+        const Incident &incident,
+        const std::string &reason) override
+    {
+        std::cout
+            << "[OBSERVER - " << name_ << "] "
+            << "Incident " << incident.getId()
+            << " changed. Current state: "
+            << incident.currentStateName()
+            << ". Reason: "
+            << reason
+            << std::endl;
+    }
+
+private:
+    std::string name_;
+};
+
 int main()
 {
-    std::cout << "CampusGuard skeleton - replace with real scenarios.\n";
+    std::cout << "\n";
+    std::cout << "============================================================\n";
+    std::cout << "                  CAMPUSGUARD FULL TEST\n";
+    std::cout << "============================================================\n\n";
 
+    /*
+     * ==========================================================
+     * 1. CREATE SHARED SYSTEM OBJECTS
+     * ==========================================================
+     */
+
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "SETUP: Creating CampusGuard subsystems\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    // Mediator
     IncidentCoordinator coordinator;
+
+    // Command Invoker
     OperatorConsole console;
 
+    // Facade subsystem
     AccessControlSystem access;
-    //LegacySecurityGateway legacyGateway;
-    // TODO(Katlego): wrap legacyGateway in a LegacyGatewayAdapter that
-    // implements INotificationChannel, pass that to AlertService instead.
-    // AlertService alerts(&adapter);
-    // EmergencyOperationsFacade facade(&access, &alerts, &coordinator);
 
-    // TODO(Ancheen): build 2+ ResponseUnit instances, register them with
-    // coordinator, create concrete Commands, submit() them via console.
+    // Adapter
+    LegacyGatewayAdapter adapter;
 
-    SecurityTeam security("Security Alpha", &coordinator);
-    MedicalResponder medical("Medical Bravo", &coordinator);
-    FacilitiesCrew facilities("Facilities Charlie", &coordinator);
+    // AlertService talks to the Adapter through INotificationChannel
+    AlertService alerts(&adapter);
+
+    // Facade
+    EmergencyOperationsFacade facade(
+        &access,
+        &alerts,
+        &coordinator);
+
+    std::cout << "\n[SETUP] Core subsystems created.\n";
+
+    /*
+     * ==========================================================
+     * 2. MEDIATOR SETUP
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 1: MEDIATOR SETUP\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    SecurityTeam security(
+        "Security Alpha",
+        &coordinator);
+
+    MedicalResponder medical(
+        "Medical Bravo",
+        &coordinator);
+
+    FacilitiesCrew facilities(
+        "Facilities Charlie",
+        &coordinator);
 
     coordinator.registerUnit(&security);
     coordinator.registerUnit(&medical);
     coordinator.registerUnit(&facilities);
 
-    std::cout << "[Setup] 3 response units registered.\n\n";
+    std::cout
+        << "[TEST] Security, Medical and Facilities registered "
+        << "with IncidentCoordinator.\n";
 
-    Incident fire("INC-001", "Fire", "Library", 4);
-    IncidentLogger logger;
-    IncidentDashboard dashboard;
-    fire.attach(&logger);
-    fire.attach(&dashboard);
+    /*
+     * ==========================================================
+     * 3. INCIDENT + STATE PATTERN
+     * ==========================================================
+     */
 
-    std::cout << "--- Dispatch Security to Library ---\n";
-    console.submit(new DispatchUnitCommand(&security, "Library", &fire));
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 2: STATE PATTERN\n";
+    std::cout << "------------------------------------------------------------\n";
 
-    std::cout << "\n--- Dispatch Medical to Library ---\n";
-    console.submit(new DispatchUnitCommand(&medical, "Library", &fire));
+    Incident fire(
+        "INC-001",
+        "Fire",
+        "Library",
+        4);
 
-    std::cout << "\n--- Lockdown Library ---\n";
-    console.submit(new LockdownZoneCommand(&access, "Library"));
+    fire.setState(
+        new ReportedState());
 
-    std::cout << "\n--- Broadcast evacuation alert ---\n";
-    // console.submit(new IssueAlertCommand(&alerts, //to be implemented by Katlego's scenario
-    //                                      "Evacuate Library via East exit",
-    //                                      "Library"));
+    std::cout
+        << "[STATE] Initial state: "
+        << fire.currentStateName()
+        << "\n";
 
-    std::cout << "\n--- Cancel last (undo alert) ---\n";
-    console.submit(new CancelActionCommand(&console));
+    /*
+     * Expected:
+     *
+     * Reported
+     *      ->
+     * Dispatched
+     *      ->
+     * Contained
+     *      ->
+     * Resolved
+     */
 
-    std::cout << "\n--- Cancel again (undo lockdown) ---\n";
-    console.submit(new CancelActionCommand(&console));
+    bool stateResult;
 
-    std::cout << "\n--- Cancel again (recall Medical - real undo) ---\n";
-    console.submit(new CancelActionCommand(&console));
+    stateResult = fire.advanceState();
 
-    // TODO(Musa): create Incident instances, attach observers, drive
-    // state transitions, including one illegal transition to
-    // demonstrate the required failure case.
+    std::cout
+        << "[STATE] advanceState() returned: "
+        << (stateResult ? "true" : "false")
+        << "\n";
 
-    return 0;
-}
-#include <iostream>
-#include "../include/incident/Incident.h"
-#include "../include/incident/ReportedState.h"
-#include "../include/incident/IncidentCoordinator.h"
-#include "../include/units/ResponseUnit.h"
+    std::cout
+        << "[STATE] Current state: "
+        << fire.currentStateName()
+        << "\n";
 
-// ---------------------------------------------------------------------
-// TEMPORARY test-only subclass, for Musa's local testing before Anchen's
-// real ResponseUnit subclasses exist. DELETE this before final submission.
-// ---------------------------------------------------------------------
-class TestUnit : public ResponseUnit
-{
-public:
-    TestUnit(const std::string &name, IIncidentMediator *mediator)
-        : ResponseUnit(name, mediator), status_("idle") {}
+    stateResult = fire.advanceState();
 
-    void dispatch(const std::string &location) override
-    {
-        status_ = "arrived";
-        std::cout << getName() << " dispatched to " << location << "\n";
-        reportStatusChange("arrived"); // triggers the Mediator
-    }
+    std::cout
+        << "[STATE] advanceState() returned: "
+        << (stateResult ? "true" : "false")
+        << "\n";
 
-    void recall() override
-    {
-        status_ = "idle";
-        std::cout << getName() << " recalled.\n";
-    }
+    std::cout
+        << "[STATE] Current state: "
+        << fire.currentStateName()
+        << "\n";
 
-    std::string getStatus() const override
-    {
-        return status_;
-    }
+    stateResult = fire.advanceState();
 
-private:
-    std::string status_;
-};
+    std::cout
+        << "[STATE] advanceState() returned: "
+        << (stateResult ? "true" : "false")
+        << "\n";
 
-int main()
-{
-    std::cout << "=== CampusGuard - Musa's local test ===\n\n";
+    std::cout
+        << "[STATE] Current state: "
+        << fire.currentStateName()
+        << "\n";
 
-    // --- Test 1: State pattern chain ---
-    std::cout << "--- Testing Incident State transitions ---\n";
-    Incident incident("INC-001", "Fire", "Engineering Building", 4);
-    incident.setState(new ReportedState());
+    /*
+     * ==========================================================
+     * 4. INVALID STATE TRANSITION
+     * ==========================================================
+     *
+     * Resolved is terminal.
+     *
+     * This gives us the practical's required failure case.
+     */
 
-    std::cout << "Current state: " << incident.currentStateName() << "\n";
-    incident.advanceState(); // Reported -> Dispatched
-    std::cout << "Current state: " << incident.currentStateName() << "\n";
-    incident.advanceState(); // Dispatched -> Contained
-    std::cout << "Current state: " << incident.currentStateName() << "\n";
-    incident.advanceState(); // Contained -> Resolved
-    std::cout << "Current state: " << incident.currentStateName() << "\n";
+    std::cout << "\n--- Invalid State Transition Test ---\n";
 
-    bool advanced = incident.advanceState(); // should FAIL - Resolved is terminal
-    std::cout << "Attempted advance from Resolved, succeeded? "
-              << (advanced ? "true" : "false") << "\n\n";
+    bool invalidState =
+        fire.advanceState();
 
-    // --- Test 2: Mediator pattern ---
-    std::cout << "--- Testing Mediator coordination ---\n";
-    IncidentCoordinator coordinator;
-    TestUnit security("SecurityTeam-1", &coordinator);
-    TestUnit medical("MedicalTeam-1", &coordinator);
+    std::cout
+        << "[STATE] Attempted advance from Resolved.\n";
 
-    coordinator.registerUnit(&security);
-    coordinator.registerUnit(&medical);
+    std::cout
+        << "[STATE] Succeeded? "
+        << (invalidState ? "true" : "false")
+        << "\n";
 
-    security.dispatch("Engineering Building"); // should trigger mediator to notify medical
+    /*
+     * ==========================================================
+     * 5. OBSERVER PATTERN
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 3: OBSERVER PATTERN\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    TestIncidentObserver loggerObserver(
+        "Incident Logger");
+
+    TestIncidentObserver dashboardObserver(
+        "Incident Dashboard");
+
+    fire.attach(
+        &loggerObserver);
+
+    fire.attach(
+        &dashboardObserver);
+
+    std::cout
+        << "[TEST] Two observers attached.\n";
+
+    /*
+     * Explicit notification test.
+     *
+     * Both observers should receive this.
+     */
+
+    fire.notify(
+        "Emergency condition updated");
+
+    /*
+     * Test detach as well.
+     */
+
+    std::cout << "\n--- Detaching Dashboard Observer ---\n";
+
+    fire.detach(
+        &dashboardObserver);
+
+    fire.notify(
+        "Only logger should receive this update");
+
+    /*
+     * ==========================================================
+     * 6. COMMAND + MEDIATOR
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 4: COMMAND + MEDIATOR\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    std::cout
+        << "\n--- Dispatch Security to Library ---\n";
+
+    console.submit(
+        new DispatchUnitCommand(
+            &security,
+            "Library",
+            &fire));
+
+    std::cout
+        << "\n--- Dispatch Medical to Library ---\n";
+
+    console.submit(
+        new DispatchUnitCommand(
+            &medical,
+            "Library",
+            &fire));
+
+    /*
+     * DispatchUnitCommand is a concrete Command.
+     *
+     * OperatorConsole = Invoker
+     * ResponseUnit     = Receiver
+     *
+     * ResponseUnit also talks to IncidentCoordinator,
+     * demonstrating Command + Mediator integration.
+     */
+
+    /*
+     * ==========================================================
+     * 7. LOCKDOWN COMMAND
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 5: LOCKDOWN COMMAND\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    console.submit(
+        new LockdownZoneCommand(
+            &access,
+            "Library"));
+
+    /*
+     * ==========================================================
+     * 8. ADAPTER DIRECT TEST
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 6: ADAPTER PATTERN\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    bool adapterResult =
+        alerts.broadcastAlert(
+            "FIRE: Evacuate Library immediately",
+            "Library");
+
+    std::cout
+        << "[ADAPTER TEST] Result: "
+        << (adapterResult
+                ? "SUCCESS"
+                : "FAILED")
+        << "\n";
+
+    /*
+     * Expected flow:
+     *
+     * AlertService
+     *      ->
+     * INotificationChannel
+     *      ->
+     * LegacyGatewayAdapter
+     *
+     * Adapter:
+     *
+     * string zone
+     *      ->
+     * integer zone
+     *
+     * message
+     *      ->
+     * signal code
+     *
+     * std::string
+     *      ->
+     * const char*
+     *
+     * LegacyGatewayAdapter
+     *      ->
+     * LegacySecurityGateway::sendRawSignal()
+     */
+
+    /*
+     * ==========================================================
+     * 9. COMMAND + ADAPTER
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 7: COMMAND + ADAPTER\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    console.submit(
+        new IssueAlertCommand(
+            &alerts,
+            "Evacuate Library via East exit",
+            "Library"));
+
+    /*
+     * This creates:
+     *
+     * OperatorConsole
+     *      ->
+     * IssueAlertCommand
+     *      ->
+     * AlertService
+     *      ->
+     * LegacyGatewayAdapter
+     *      ->
+     * LegacySecurityGateway
+     */
+
+    /*
+     * ==========================================================
+     * 10. COMMAND UNDO
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 8: COMMAND UNDO\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    std::cout
+        << "\n--- Cancel previous command ---\n";
+
+    console.submit(
+        new CancelActionCommand(
+            &console));
+
+    std::cout
+        << "\n--- Cancel previous command again ---\n";
+
+    console.submit(
+        new CancelActionCommand(
+            &console));
+
+    /*
+     * ==========================================================
+     * 11. FACADE
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 9: FACADE PATTERN\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    bool facadeResult =
+        facade.initiateEvacuation(
+            "Engineering Building",
+            "Fire detected on second floor");
+
+    std::cout
+        << "[FACADE TEST] Result: "
+        << (facadeResult
+                ? "SUCCESS"
+                : "FAILED")
+        << "\n";
+
+    /*
+     * ==========================================================
+     * 12. DIRECT SUBSYSTEM ACCESS
+     * ==========================================================
+     *
+     * Important:
+     *
+     * Facade does not prevent clients from using the subsystems
+     * directly.
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 10: DIRECT SUBSYSTEM ACCESS\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    access.restrictZone(
+        "Chemistry Lab");
+
+    alerts.broadcastAlert(
+        "Security notice for Chemistry Lab",
+        "Chemistry Lab");
+
+    /*
+     * ==========================================================
+     * 13. FAILURE CASE - ADAPTER / ALERT SERVICE
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 11: INVALID ALERT\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    bool invalidAlert =
+        alerts.broadcastAlert(
+            "This should fail",
+            "");
+
+    std::cout
+        << "[INVALID ALERT] Accepted? "
+        << (invalidAlert
+                ? "true"
+                : "false")
+        << "\n";
+
+    /*
+     * ==========================================================
+     * 14. SECOND INCIDENT / DIFFERENT RUNTIME DATA
+     * ==========================================================
+     *
+     * The practical requires at least two incidents or operational
+     * contexts with different runtime data.
+     */
+
+    std::cout << "\n";
+    std::cout << "------------------------------------------------------------\n";
+    std::cout << "TEST 12: SECOND INCIDENT\n";
+    std::cout << "------------------------------------------------------------\n";
+
+    Incident chemicalLeak(
+        "INC-002",
+        "Chemical Leak",
+        "Chemistry Laboratory",
+        5);
+
+    chemicalLeak.setState(
+        new ReportedState());
+
+    TestIncidentObserver secondObserver(
+        "Second Incident Monitor");
+
+    chemicalLeak.attach(
+        &secondObserver);
+
+    chemicalLeak.notify(
+        "Chemical leak reported");
+
+    std::cout
+        << "[INC-002] Current state: "
+        << chemicalLeak.currentStateName()
+        << "\n";
+
+    chemicalLeak.advanceState();
+
+    std::cout
+        << "[INC-002] Current state after advance: "
+        << chemicalLeak.currentStateName()
+        << "\n";
+
+    /*
+     * ==========================================================
+     * END
+     * ==========================================================
+     */
+
+    std::cout << "\n";
+    std::cout << "============================================================\n";
+    std::cout << "                ALL TESTS COMPLETED\n";
+    std::cout << "============================================================\n";
 
     return 0;
 }
