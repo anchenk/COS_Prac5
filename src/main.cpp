@@ -1,6 +1,24 @@
 #include <iostream>
-#include "../include/incident/IncidentCoordinator.h"
+#include <vector>
+
+#include "../include/observer/Incident.h"
+#include "../include/observer/IncidentLogger.h"
+#include "../include/observer/IncidentLogger.h"
+#include "../include/observer/IncidentDashboard.h"
+
+#include "../include/units/ResponseUnit.h"
+#include "../include/units/SecurityTeam.h"
+#include "../include/units/MedicalResponder.h"
+#include "../include/units/FacilitiesCrew.h"
+
 #include "../include/commands/OperatorConsole.h"
+#include "../include/commands/DispatchUnitCommand.h"
+#include "../include/commands/LockdownZoneCommand.h"
+#include "../include/commands/IssueAlertCommand.h"
+#include "../include/commands/CancelActionCommand.h"
+
+#include "../include/incident/IncidentCoordinator.h"
+
 #include "../include/facade/AccessControlSystem.h"
 #include "../include/facade/AlertService.h"
 #include "../include/facade/EmergencyOperationsFacade.h"
@@ -10,14 +28,15 @@
 // (Katlego) get wired together into one coherent run. Musa's
 // IncidentCoordinator, Incident and State classes tie both scenarios
 // together. Replace this stub once individual pieces compile.
-int main() {
+int main()
+{
     std::cout << "CampusGuard skeleton - replace with real scenarios.\n";
 
     IncidentCoordinator coordinator;
     OperatorConsole console;
 
     AccessControlSystem access;
-    LegacySecurityGateway legacyGateway;
+    //LegacySecurityGateway legacyGateway;
     // TODO(Katlego): wrap legacyGateway in a LegacyGatewayAdapter that
     // implements INotificationChannel, pass that to AlertService instead.
     // AlertService alerts(&adapter);
@@ -25,6 +44,45 @@ int main() {
 
     // TODO(Ancheen): build 2+ ResponseUnit instances, register them with
     // coordinator, create concrete Commands, submit() them via console.
+
+    SecurityTeam security("Security Alpha", &coordinator);
+    MedicalResponder medical("Medical Bravo", &coordinator);
+    FacilitiesCrew facilities("Facilities Charlie", &coordinator);
+
+    coordinator.registerUnit(&security);
+    coordinator.registerUnit(&medical);
+    coordinator.registerUnit(&facilities);
+
+    std::cout << "[Setup] 3 response units registered.\n\n";
+
+    Incident fire("INC-001", "Fire", "Library", 4);
+    IncidentLogger logger;
+    IncidentDashboard dashboard;
+    fire.attach(&logger);
+    fire.attach(&dashboard);
+
+    std::cout << "--- Dispatch Security to Library ---\n";
+    console.submit(new DispatchUnitCommand(&security, "Library", &fire));
+
+    std::cout << "\n--- Dispatch Medical to Library ---\n";
+    console.submit(new DispatchUnitCommand(&medical, "Library", &fire));
+
+    std::cout << "\n--- Lockdown Library ---\n";
+    console.submit(new LockdownZoneCommand(&access, "Library"));
+
+    std::cout << "\n--- Broadcast evacuation alert ---\n";
+    // console.submit(new IssueAlertCommand(&alerts, //to be implemented by Katlego's scenario
+    //                                      "Evacuate Library via East exit",
+    //                                      "Library"));
+
+    std::cout << "\n--- Cancel last (undo alert) ---\n";
+    console.submit(new CancelActionCommand(&console));
+
+    std::cout << "\n--- Cancel again (undo lockdown) ---\n";
+    console.submit(new CancelActionCommand(&console));
+
+    std::cout << "\n--- Cancel again (recall Medical - real undo) ---\n";
+    console.submit(new CancelActionCommand(&console));
 
     // TODO(Musa): create Incident instances, attach observers, drive
     // state transitions, including one illegal transition to
@@ -42,23 +100,27 @@ int main() {
 // TEMPORARY test-only subclass, for Musa's local testing before Anchen's
 // real ResponseUnit subclasses exist. DELETE this before final submission.
 // ---------------------------------------------------------------------
-class TestUnit : public ResponseUnit {
+class TestUnit : public ResponseUnit
+{
 public:
-    TestUnit(const std::string& name, IIncidentMediator* mediator)
+    TestUnit(const std::string &name, IIncidentMediator *mediator)
         : ResponseUnit(name, mediator), status_("idle") {}
 
-    void dispatch(const std::string& location) override {
+    void dispatch(const std::string &location) override
+    {
         status_ = "arrived";
         std::cout << getName() << " dispatched to " << location << "\n";
         reportStatusChange("arrived"); // triggers the Mediator
     }
 
-    void recall() override {
+    void recall() override
+    {
         status_ = "idle";
         std::cout << getName() << " recalled.\n";
     }
 
-    std::string getStatus() const override {
+    std::string getStatus() const override
+    {
         return status_;
     }
 
@@ -66,7 +128,8 @@ private:
     std::string status_;
 };
 
-int main() {
+int main()
+{
     std::cout << "=== CampusGuard - Musa's local test ===\n\n";
 
     // --- Test 1: State pattern chain ---
