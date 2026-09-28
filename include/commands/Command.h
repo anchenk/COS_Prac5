@@ -13,7 +13,8 @@
 //
 // execute() must trigger real behaviour; undo() should be meaningful
 // (e.g. recall a dispatched unit) for at least CancelActionCommand's target.
-class Command {
+class Command
+{
 public:
     virtual ~Command() {}
     virtual void execute() = 0;
