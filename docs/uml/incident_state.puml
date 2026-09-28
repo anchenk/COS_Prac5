@@ -1,0 +1,20 @@
+@startuml
+title Incident lifecycle (State pattern)
+
+[*] --> Reported : setState(new ReportedState)
+Reported --> Dispatched : advance()
+Dispatched --> Contained : advance()
+Contained --> Resolved : advance()
+Resolved --> Resolved : advance() rejected, returns false
+
+note right of Resolved
+  Terminal state.
+  ResolvedState::advance() prints an
+  error and returns false.
+end note
+
+note bottom of Dispatched
+  Every transition goes through
+  Incident::setState(), which calls notify()
+end note
+@enduml
