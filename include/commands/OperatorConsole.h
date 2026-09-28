@@ -4,7 +4,7 @@
 #include <vector>
 #include "Command.h"
 
-// TODO(Ancheen): Invoker participant in the Command pattern.
+// TODO(Anchen): Invoker participant in the Command pattern.
 // Keeps a history so CancelActionCommand (or a dedicated cancelLast())
 // has something real to undo - this is what makes Cancel meaningful
 // rather than decorative.

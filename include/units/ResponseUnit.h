@@ -13,12 +13,13 @@ class IIncidentMediator; // forward declaration
 //
 // Concrete subclasses (create alongside this file):
 //   SecurityTeam, MedicalResponder, FacilitiesCrew
-class ResponseUnit {
+class ResponseUnit
+{
 public:
-    ResponseUnit(const std::string& name, IIncidentMediator* mediator);
+    ResponseUnit(const std::string &name, IIncidentMediator *mediator);
     virtual ~ResponseUnit();
 
-    virtual void dispatch(const std::string& location) = 0;
+    virtual void dispatch(const std::string &location) = 0;
     virtual void recall() = 0;
     virtual std::string getStatus() const = 0;
 
@@ -27,11 +28,11 @@ public:
 protected:
     // Colleagues call this on the mediator when their own state changes,
     // e.g. after dispatch() completes.
-    void reportStatusChange(const std::string& event);
+    void reportStatusChange(const std::string &event);
 
 private:
-    std::string name_;
-    IIncidentMediator* mediator_; // not owned
+    std::string name;
+    IIncidentMediator *mediator; // not owned
 };
 
 #endif // CAMPUSGUARD_RESPONSEUNIT_H
