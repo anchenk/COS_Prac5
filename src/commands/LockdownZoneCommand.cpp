@@ -10,25 +10,39 @@ void LockdownZoneCommand::execute()
 {
     if (!acs)
     {
-        std::cout << "[Lockdown] no receiver.\n";
+        std::cout << "[LockdownZoneCommand] no receiver; aborting.\n";
         return;
     }
     std::cout << "[Command] execute: " << describe() << "\n";
-    previousState = acs->isLocked(zone);
-    acs->lockZone(zone);
+    lastExecuteSucceeded = acs->lockZone(zone);
     executed = true;
+
+    if (!lastExecuteSucceeded)
+    {
+        std::cout << "[LockdownZoneCommand] lockZone failed for zone '"
+                  << zone << "'. Invalid or unknown zone.\n";
+    }
 }
 
 void LockdownZoneCommand::undo()
 {
     if (!executed || !acs)
         return;
-    std::cout << "[Command] undo: " << describe() << "\n";
 
-    if (previousState)
-        acs->lockZone(zone);
-    else
-        acs->unlockZone(zone);
+    if (!lastExecuteSucceeded)
+    {
+        std::cout << "[Command] undo skipped: execute() had no effect.\n";
+        executed = false;
+        return;
+    }
+
+    std::cout << "[Command] undo: " << describe() << "\n";
+    bool ok = acs->unlockZone(zone);
+    if (!ok)
+    {
+        std::cout << "[LockdownZoneCommand] undo: unlockZone failed for '"
+                  << zone << "'.\n";
+    }
     executed = false;
 }
 

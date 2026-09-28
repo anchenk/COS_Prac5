@@ -6,20 +6,22 @@
 
 class AccessControlSystem;
 
-class LockdownZoneCommand : public Command
-{
+// Concrete Command: lock a zone via AccessControlSystem.
+// Receiver: AccessControlSystem.
+
+class LockdownZoneCommand : public Command {
 public:
-    LockdownZoneCommand(AccessControlSystem *acs, const std::string &zone);
+    LockdownZoneCommand(AccessControlSystem* acs, const std::string& zone);
 
     void execute() override;
-    void undo() override;
+    void undo()    override;
     std::string describe() const override;
 
 private:
-    AccessControlSystem *acs;
+    AccessControlSystem* acs;
     std::string zone;
-    bool previousState = false;
     bool executed = false;
+    bool lastExecuteSucceeded = false;
 };
 
 #endif

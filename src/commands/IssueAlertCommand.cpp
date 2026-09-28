@@ -3,40 +3,50 @@
 #include <iostream>
 
 IssueAlertCommand::IssueAlertCommand(AlertService *svc,
-                                     const std::string &message)
-    : svc(svc), message(message) {}
+                                     const std::string &message,
+                                     const std::string &zoneId)
+    : svc(svc), message(message), zoneId(zoneId) {}
 
 void IssueAlertCommand::execute()
 {
     if (!svc)
     {
-        std::cout << "[IssueAlert] no receiver.\n";
+        std::cout << "[IssueAlertCommand] no receiver; aborting.\n";
         return;
     }
     std::cout << "[Command] execute: " << describe() << "\n";
-    wasActive = svc->isAlertActive();
-    svc->broadcastAlert(message);
+    lastExecuteSucceeded = svc->broadcastAlert(message, zoneId);
     executed = true;
+
+    if (!lastExecuteSucceeded)
+    {
+        std::cout << "[IssueAlertCommand] broadcast failed for zone '"
+                  << zoneId << "'.\n";
+    }
 }
 
 void IssueAlertCommand::undo()
 {
-    if (!executed || !svc)
+    if (!executed)
         return;
-    std::cout << "[Command] undo: " << describe() << "\n";
-    if (wasActive)
+
+    if (!lastExecuteSucceeded)
     {
-        std::cout << "[IssueAlert] previous alert was already active; "
-                     "leaving service as-is (no rollback).\n";
+        std::cout << "[Command] undo skipped: broadcast never succeeded.\n";
+        executed = false;
+        return;
     }
-    else
-    {
-        svc->clearAlert();
-    }
+
+    std::cout << "[Command] undo: " << describe()
+              << " -> no retraction API on AlertService; "
+                 "logging acknowledgement instead.\n";
+    std::cout << "[IssueAlertCommand] Alert for zone '" << zoneId
+              << "' acknowledged as delivered (not retracted).\n";
+
     executed = false;
 }
 
 std::string IssueAlertCommand::describe() const
 {
-    return "IssueAlert(\"" + message + "\")";
+    return "IssueAlert(zone=" + zoneId + ", \"" + message + "\")";
 }

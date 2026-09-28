@@ -6,19 +6,26 @@
 
 class AlertService;
 
-class IssueAlertCommand : public Command {
+// Concrete Command: broadcast an alert to a zone via AlertService.
+// Receiver: AlertService
+
+class IssueAlertCommand : public Command
+{
 public:
-    IssueAlertCommand(AlertService* svc, const std::string& message);
+    IssueAlertCommand(AlertService *svc,
+                      const std::string &message,
+                      const std::string &zoneId);
 
     void execute() override;
-    void undo()    override;
+    void undo() override;
     std::string describe() const override;
 
 private:
-    AlertService* svc;
+    AlertService *svc; // not owned
     std::string message;
-    bool wasActive = false;
-    bool executed  = false;
+    std::string zoneId;
+    bool executed = false;
+    bool lastExecuteSucceeded = false;
 };
 
 #endif
