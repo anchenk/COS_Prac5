@@ -1,6 +1,6 @@
 #include "DispatchUnitCommand.h"
 #include "ResponseUnit.h"
-#include "observer/Incident.h"
+#include "incident/Incident.h"
 #include <iostream>
 
 DispatchUnitCommand::DispatchUnitCommand(ResponseUnit *unit, const std::string &location, Incident *incident) : unit(unit), location(location), incident(incident)
@@ -19,9 +19,9 @@ void DispatchUnitCommand::execute()
     unit->dispatch(location);
     executed = true;
 
-    if (incident && incident->getStatus() != Incident::Status::Responding)
+    if (incident && incident->currentStateName() == "Reported")
     {
-        incident->getStatus(Incident::Status::Responding, "unit dispathed " + unit->getName());
+        incident->advanceState(); // Reported -> Dispatched
     }
 }
 
