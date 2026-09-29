@@ -1,0 +1,187 @@
+time="2026-09-29T06:46:56+02:00" level=warning msg="C:\\Users\\Desktop\\COS_Prac5\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Container cos_prac5-campusguard-run-632378cfcd64 Creating 
+ Container cos_prac5-campusguard-run-632378cfcd64 Created 
+==1== Memcheck, a memory error detector
+==1== Copyright (C) 2002-2017, and GNU GPL'd, by Julian Seward et al.
+==1== Using Valgrind-3.18.1 and LibVEX; rerun with -h for copyright info
+==1== Command: ./build/campusguard
+==1== 
+
+============================================================
+                  CAMPUSGUARD FULL TEST
+============================================================
+
+------------------------------------------------------------
+SETUP: Creating CampusGuard subsystems
+------------------------------------------------------------
+[AccessControlSystem] Initialized.
+LegacySecurityGateway initialized.
+[LegacyGatewayAdapter] Adapter ready.
+
+[SETUP] Core subsystems created.
+
+------------------------------------------------------------
+TEST 1: MEDIATOR SETUP
+------------------------------------------------------------
+[TEST] Security, Medical and Facilities registered with IncidentCoordinator.
+
+------------------------------------------------------------
+TEST 2: STATE PATTERN
+------------------------------------------------------------
+[STATE] Initial state: Reported
+[STATE] advanceState() returned: true
+[STATE] Current state: Dispatched
+[STATE] advanceState() returned: true
+[STATE] Current state: Contained
+[STATE] advanceState() returned: true
+[STATE] Current state: Resolved
+
+--- Invalid State Transition Test ---
+Cannot advance: incident is already Resolved (terminal state).
+[STATE] Attempted advance from Resolved.
+[STATE] Succeeded? false
+
+------------------------------------------------------------
+TEST 3: OBSERVER PATTERN
+------------------------------------------------------------
+[TEST] Two observers attached.
+[OBSERVER - Incident Logger] Incident INC-001 changed. Current state: Resolved. Reason: Emergency condition updated
+[OBSERVER - Incident Dashboard] Incident INC-001 changed. Current state: Resolved. Reason: Emergency condition updated
+
+--- Detaching Dashboard Observer ---
+[OBSERVER - Incident Logger] Incident INC-001 changed. Current state: Resolved. Reason: Only logger should receive this update
+
+------------------------------------------------------------
+TEST 4: COMMAND + MEDIATOR
+------------------------------------------------------------
+
+--- Dispatch Security to Library ---
+[DispatchUnitCommand] executing: DispatchUnit(Security Alpha -> Library)
+[SecurityTeam Security Alpha] deployed to Library
+[Mediator] Security Alpha reported: security dispatched to Library
+
+--- Dispatch Medical to Library ---
+[DispatchUnitCommand] executing: DispatchUnit(Medical Bravo -> Library)
+[MedicalResponder Medical Bravo] dispatched to Library
+[Mediator] Medical Bravo reported: medical dispatched to Library
+
+------------------------------------------------------------
+TEST 5: LOCKDOWN COMMAND
+------------------------------------------------------------
+[Command] execute: LockdownZone(Library)
+[AccessControlSystem] Zone Library locked.
+
+------------------------------------------------------------
+TEST 6: ADAPTER PATTERN
+------------------------------------------------------------
+[AlertService] Broadcasting alert to zone: Library
+[LegacyGatewayAdapter] Translating zone "Library" -> legacy zone 100
+[LegacyGatewayAdapter] Translating CampusGuard alert...
+LegacySecurityGateway: Sending raw signal. Signal code: 900, Payload: CAMPUSGUARD|Library|FIRE: Evacuate Library immediately, Zone ID: 100
+[ADAPTER TEST] Result: SUCCESS
+
+------------------------------------------------------------
+TEST 7: COMMAND + ADAPTER
+------------------------------------------------------------
+[Command] execute: IssueAlert(zone=Library, "Evacuate Library via East exit")
+[AlertService] Broadcasting alert to zone: Library
+[LegacyGatewayAdapter] Translating CampusGuard alert...
+LegacySecurityGateway: Sending raw signal. Signal code: 900, Payload: CAMPUSGUARD|Library|Evacuate Library via East exit, Zone ID: 100
+
+------------------------------------------------------------
+TEST 8: COMMAND UNDO
+------------------------------------------------------------
+
+--- Cancel previous command ---
+[Command] execute: CancelAction
+[Command] undo: IssueAlert(zone=Library, "Evacuate Library via East exit") -> no retraction API on AlertService; logging acknowledgement instead.
+[IssueAlertCommand] Alert for zone 'Library' acknowledged as delivered (not retracted).
+
+--- Cancel previous command again ---
+[Command] execute: CancelAction
+[CancelAction] CancelAction itself cannot be undone (no meaningful inverse).
+
+------------------------------------------------------------
+TEST 9: FACADE PATTERN
+------------------------------------------------------------
+[AccessControlSystem] Zone Engineering Building restricted.
+[AccessControlSystem] Zone Engineering Building::EMERGENCY_EXIT unlocked.
+[AlertService] Broadcasting alert to zone: Engineering Building
+[LegacyGatewayAdapter] Translating zone "Engineering Building" -> legacy zone 101
+[LegacyGatewayAdapter] Translating CampusGuard alert...
+LegacySecurityGateway: Sending raw signal. Signal code: 900, Payload: CAMPUSGUARD|Engineering Building|EVACUATE: Fire detected on second floor, Zone ID: 101
+[FACADE] Evacuation initiated for zone Engineering Building
+[FACADE TEST] Result: SUCCESS
+
+------------------------------------------------------------
+TEST 10: DIRECT SUBSYSTEM ACCESS
+------------------------------------------------------------
+[AccessControlSystem] Zone Chemistry Lab restricted.
+[AlertService] Broadcasting alert to zone: Chemistry Lab
+[LegacyGatewayAdapter] Translating zone "Chemistry Lab" -> legacy zone 102
+[LegacyGatewayAdapter] Translating CampusGuard alert...
+LegacySecurityGateway: Sending raw signal. Signal code: 500, Payload: CAMPUSGUARD|Chemistry Lab|Security notice for Chemistry Lab, Zone ID: 102
+
+------------------------------------------------------------
+TEST 11: INVALID ALERT
+------------------------------------------------------------
+[AlertService] ERROR: Zone ID cannot be empty.
+[INVALID ALERT] Accepted? false
+
+------------------------------------------------------------
+TEST 12: SECOND INCIDENT
+------------------------------------------------------------
+[OBSERVER - Second Incident Monitor] Incident INC-002 changed. Current state: Reported. Reason: Chemical leak reported
+[INC-002] Current state: Reported
+[OBSERVER - Second Incident Monitor] Incident INC-002 changed. Current state: Dispatched. Reason: State changed to Dispatched
+[INC-002] Current state after advance: Dispatched
+
+============================================================
+                ALL TESTS COMPLETED
+============================================================
+LegacySecurityGateway destroyed.
+[AccessControlSystem] Destroyed.
+==1== 
+==1== HEAP SUMMARY:
+==1==     in use at exit: 335 bytes in 7 blocks
+==1==   total heap usage: 79 allocs, 72 frees, 79,514 bytes allocated
+==1== 
+==1== 16 bytes in 1 blocks are definitely lost in loss record 1 of 7
+==1==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==1==    by 0x10C859: main (main.cpp:453)
+==1== 
+==1== 16 bytes in 1 blocks are definitely lost in loss record 2 of 7
+==1==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==1==    by 0x10C8AB: main (main.cpp:460)
+==1== 
+==1== 31 bytes in 1 blocks are indirectly lost in loss record 3 of 7
+==1==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==1==    by 0x49AD109: void std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_construct<char*>(char*, char*, std::forward_iterator_tag) (in /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30)
+==1==    by 0x110E7B: IssueAlertCommand::IssueAlertCommand(AlertService*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&) (IssueAlertCommand.cpp:8)
+==1==    by 0x10C780: main (main.cpp:421)
+==1== 
+==1== 56 bytes in 1 blocks are definitely lost in loss record 4 of 7
+==1==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==1==    by 0x10C4BE: main (main.cpp:353)
+==1== 
+==1== 64 bytes in 1 blocks are definitely lost in loss record 5 of 7
+==1==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==1==    by 0x10C30D: main (main.cpp:318)
+==1== 
+==1== 64 bytes in 1 blocks are definitely lost in loss record 6 of 7
+==1==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==1==    by 0x10C3C0: main (main.cpp:327)
+==1== 
+==1== 119 (88 direct, 31 indirect) bytes in 1 blocks are definitely lost in loss record 7 of 7
+==1==    at 0x4849013: operator new(unsigned long) (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==1==    by 0x10C761: main (main.cpp:421)
+==1== 
+==1== LEAK SUMMARY:
+==1==    definitely lost: 304 bytes in 6 blocks
+==1==    indirectly lost: 31 bytes in 1 blocks
+==1==      possibly lost: 0 bytes in 0 blocks
+==1==    still reachable: 0 bytes in 0 blocks
+==1==         suppressed: 0 bytes in 0 blocks
+==1== 
+==1== For lists of detected and suppressed errors, rerun with: -s
+==1== ERROR SUMMARY: 6 errors from 6 contexts (suppressed: 0 from 0)
